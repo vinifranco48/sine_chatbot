@@ -20,7 +20,7 @@ class QdrantRetriever:
         self.collection_name = settings.qdrant_collection_name
         self.prefetch_limit = settings.prefetch_limit
 
-        def search_documents(
+    def search_documents(
                 self, embeddings: QueryEmbeddings, limit: int = 5
                 ) -> List[Document]:
             try:
