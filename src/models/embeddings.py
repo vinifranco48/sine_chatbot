@@ -10,7 +10,6 @@ class SparseVector(BaseModel):
 class QueryEmbeddings(BaseModel):
     dense: List[float]
     sparse_bm25: SparseVector
-    late: List[List[float]]
 
 
 class Document(BaseModel):

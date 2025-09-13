@@ -46,6 +46,9 @@ class Settings(BaseSettings):
 
     # --- Cache para embeddings ---
     embedding_cache_dir: str = Field("embedding_cache", validation_alias="EMBEDDING_CACHE_DIR")
+    
+    # --- Configuração GROQ ---
+    groq_api_key: Optional[str] = Field(None, validation_alias='GROQ_API_KEY')
 
 # --- Instanciação das Configurações ---
 try:
@@ -63,11 +66,11 @@ try:
             load_dotenv(env_path)
             
             # Verificar se GROQ_API_KEY está definida
-            groq_key = os.getenv('BEDROCK_API')
+            groq_key = os.getenv('GROQ_API_KEY')
             if groq_key:
-                print(f"BEDROCK_API encontrada: {groq_key[:10]}...")
+                print(f"GROQ_API_KEY encontrada: {groq_key[:10]}...")
             else:
-                print("BEDROCK_API NÃO encontrada no ambiente.")
+                print("GROQ_API_KEY NÃO encontrada no ambiente.")
             break
     
     if not env_found:

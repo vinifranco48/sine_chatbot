@@ -58,7 +58,7 @@ class QdrantRetriever:
                     status_code=503, detail="Search service temporarily unavailable"
                 )
             except Exception as e:
-            # Handle any other errors
+                # Handle any other errors
                 logger.error(
                     "Unexpected error during search",
                     extra={"error": str(e), "collection": self.collection_name},

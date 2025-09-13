@@ -133,14 +133,6 @@ def create_embeddings(chunk_text, bedrock_client, bm25_model):
         print(f"Chunk text: {chunk_text[:100]}...")  # Primeiros 100 caracteres para debug
         raise e
 
-    # A lógica para o BM25 continua a mesma
-    bm25_embeddings = bm25_model.passage_embed([chunk_text])[0]
-    
-    return {
-        "dense": dense_embeddings,
-        "sparse": bm25_embeddings
-    }
-
 def prepare_point(chunk, embedding_models):
     """Prepara um ponto para ser inserido no banco de dados vetorial."""
     
