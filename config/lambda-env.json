@@ -1,0 +1,34 @@
+{
+  "Description": "Environment variables for SINE Chatbot Lambda Function",
+  "Environment": {
+    "Variables": {
+      "WHATSAPP_VERIFY_TOKEN": "${WHATSAPP_VERIFY_TOKEN}",
+      "WHATSAPP_ACCESS_TOKEN": "${WHATSAPP_ACCESS_TOKEN}",
+      "WHATSAPP_PHONE_NUMBER_ID": "${WHATSAPP_PHONE_NUMBER_ID}",
+      "WHATSAPP_BUSINESS_ACCOUNT_ID": "${WHATSAPP_BUSINESS_ACCOUNT_ID}",
+
+      "BEDROCK_API": "${BEDROCK_API}",
+      "LLM_MODEL_NAME": "${LLM_MODEL_NAME}",
+      "BEDROCK_REGION": "${BEDROCK_REGION}",
+
+      "QDRANT_MODE": "${QDRANT_MODE}",
+      "QDRANT_URL": "${QDRANT_URL}",
+      "QDRANT_API_KEY": "${QDRANT_API_KEY}",
+      "QDRANT_COLLECTION_NAME": "${QDRANT_COLLECTION_NAME}",
+
+      "DATA_PATH": "${DATA_PATH}",
+      "PDF_DIR": "${PDF_DIR}",
+      "RETRIEVAL_LIMIT": "${RETRIEVAL_LIMIT}",
+      "CHUNK_SIZE": "${CHUNK_SIZE}",
+      "CHUNK_OVERLAP": "${CHUNK_OVERLAP}",
+      "PREFETCH_LIMIT": "${PREFETCH_LIMIT}",
+
+      "AWS_REGION": "${AWS_REGION}",
+      "ENVIRONMENT": "${ENVIRONMENT}",
+      "LOG_LEVEL": "${LOG_LEVEL}",
+
+      "GROQ_API_KEY": "${GROQ_API_KEY}",
+      "EMBEDDING_CACHE_DIR": "${EMBEDDING_CACHE_DIR}"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-# config/settings.py (VERSÃO SIMPLIFICADA - SEM CORS)
+# config/settings.py - VERSÃO ATUALIZADA PARA LAMBDA + WHATSAPP
 import os
 from typing import List, Optional, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,48 +7,83 @@ import traceback
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=['.env', '../.env', '../../.env'],  # Busca em múltiplos locais
+        env_file=['.env', '.env.lambda', '../.env', '../../.env'],  # Inclui .env.lambda
         env_file_encoding='utf-8',
         extra='ignore'
     )
 
+    # --- AWS Configuration ---
     aws_region: str = Field(default="us-east-1", description="AWS region for all services")
     aws_profile: Optional[str] = Field(default=None, description="AWS profile name (for local development)")
+    environment: str = Field(default="development", validation_alias='ENVIRONMENT')
+
+    # --- AWS Bedrock Configuration ---
     bedrock_region: str = Field(default="us-east-1", description="AWS Bedrock region")
     bedrock_api: str = Field(..., validation_alias='BEDROCK_API')
     llm_model_name: str = Field(
         "meta.llama4-maverick-17b-instruct-v1:0",
         validation_alias='LLM_MODEL_NAME'
     )
-    data_path: str = Field(validation_alias='DATA_PATH')
 
+    # --- WhatsApp Business API Configuration ---
+    whatsapp_verify_token: str = Field(..., validation_alias='WHATSAPP_VERIFY_TOKEN')
+    whatsapp_access_token: str = Field(..., validation_alias='WHATSAPP_ACCESS_TOKEN')
+    whatsapp_phone_number_id: str = Field(..., validation_alias='WHATSAPP_PHONE_NUMBER_ID')
+    whatsapp_business_account_id: Optional[str] = Field(None, validation_alias='WHATSAPP_BUSINESS_ACCOUNT_ID')
+
+    # --- Qdrant Vector Database Configuration ---
     qdrant_timeout: float = 60.0
-
-    dense_model_name: str = (
-        "amazon.titan-embed-text-v2:0"
-    )
-    bm25_model_name: str = "Qdrant/bm25"                                                            
-    pdf_dir: str = Field("./data/", validation_alias='PDF_DIR')
-    prefetch_limit: int = 25
     qdrant_mode: str = Field("url", validation_alias='QDRANT_MODE')
     qdrant_url: Optional[str] = Field(None, validation_alias='QDRANT_URL')
     qdrant_api_key: Optional[str] = Field(None, validation_alias='QDRANT_API_KEY')
-    collection_name: str = Field("chat-edu", validation_alias='QDRANT_COLLECTION_NAME')
-    prefetch_limit: int = 25
+    qdrant_collection_name: str = Field("chat-edu", validation_alias='QDRANT_COLLECTION_NAME')
+    prefetch_limit: int = Field(25, validation_alias='PREFETCH_LIMIT')
 
+    # --- Embeddings Configuration ---
+    dense_model_name: str = "amazon.titan-embed-text-v2:0"
+    bm25_model_name: str = "Qdrant/bm25"
 
-    # --- Configurações de Processamento de Documentos ---
+    # --- Data Processing Configuration ---
+    data_path: str = Field("./data/", validation_alias='DATA_PATH')
+    pdf_dir: str = Field("./data/", validation_alias='PDF_DIR')
     chunk_size: int = Field(2000, validation_alias='CHUNK_SIZE')
     chunk_overlap: int = Field(200, validation_alias='CHUNK_OVERLAP')
 
-    # --- Configurações do Grafo ---
+    # --- RAG Configuration ---
     retrieval_limit: int = Field(10, validation_alias='RETRIEVAL_LIMIT')
 
-    # --- Cache para embeddings ---
+    # --- Cache Configuration ---
     embedding_cache_dir: str = Field("embedding_cache", validation_alias="EMBEDDING_CACHE_DIR")
-    
-    # --- Configuração GROQ ---
+
+    # --- Alternative LLM Configuration ---
     groq_api_key: Optional[str] = Field(None, validation_alias='GROQ_API_KEY')
+
+    # --- Lambda Specific Configuration ---
+    lambda_timeout: int = Field(300, validation_alias='LAMBDA_TIMEOUT')
+    lambda_memory: int = Field(1024, validation_alias='LAMBDA_MEMORY')
+    log_level: str = Field("INFO", validation_alias='LOG_LEVEL')
+
+    @field_validator('whatsapp_verify_token')
+    @classmethod
+    def validate_whatsapp_verify_token(cls, v: str) -> str:
+        if not v or len(v) < 8:
+            raise ValueError('WhatsApp verify token deve ter pelo menos 8 caracteres')
+        return v
+
+    @field_validator('whatsapp_access_token')
+    @classmethod
+    def validate_whatsapp_access_token(cls, v: str) -> str:
+        if not v or not v.startswith('EAA'):
+            raise ValueError('WhatsApp access token deve começar com "EAA"')
+        return v
+
+    @field_validator('log_level')
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        if v.upper() not in valid_levels:
+            raise ValueError(f'Log level deve ser um de: {", ".join(valid_levels)}')
+        return v.upper()
 
 # --- Instanciação das Configurações ---
 try:

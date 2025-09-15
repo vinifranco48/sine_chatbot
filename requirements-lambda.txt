@@ -1,0 +1,44 @@
+# AWS Lambda Requirements - SINE Chatbot WhatsApp
+# Versão otimizada para reduzir tamanho do package
+
+# Core dependencies (mantém do requirements.txt atual)
+pydantic==2.11.5
+pydantic-core==2.33.2
+pydantic-settings
+python-dotenv==1.1.0
+
+# AWS SDK
+boto3>=1.34.0
+botocore>=1.34.0
+
+# LangChain essentials (somente o necessário)
+langchain-core>=0.3.34
+langgraph>=0.0.11
+
+# Groq (alternativa ao Bedrock)
+groq==0.26.0
+
+# Vector database
+qdrant-client[fastembed]
+
+# HTTP requests
+requests==2.32.3
+httpx==0.28.1
+
+# Text processing
+sentence-transformers
+
+# Fast API (para response models, não servidor)
+fastapi==0.115.12
+
+# Utilities
+typing-extensions==4.13.2
+annotated-types==0.7.0
+
+# Exclude heavy dependencies that are not needed in Lambda:
+# - uvicorn (não precisa de servidor)
+# - transformers (muito pesado, usar fastembed)
+# - pypdf (se não processar PDFs no Lambda)
+
+# Lambda specific
+# mangum  # Se quiser usar FastAPI dentro do Lambda (opcional)

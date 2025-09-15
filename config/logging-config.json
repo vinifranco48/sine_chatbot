@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "lambda": {
+      "format": "[%(levelname)s] %(asctime)s - %(name)s - %(funcName)s:%(lineno)d - %(message)s",
+      "datefmt": "%Y-%m-%d %H:%M:%S"
+    },
+    "detailed": {
+      "format": "[%(levelname)s] %(asctime)s - %(name)s - %(module)s.%(funcName)s:%(lineno)d - RequestID:%(aws_request_id)s - %(message)s",
+      "datefmt": "%Y-%m-%d %H:%M:%S"
+    }
+  },
+  "handlers": {
+    "lambda": {
+      "class": "logging.StreamHandler",
+      "level": "INFO",
+      "formatter": "lambda",
+      "stream": "ext://sys.stdout"
+    }
+  },
+  "loggers": {
+    "sine_chatbot": {
+      "level": "INFO",
+      "handlers": ["lambda"],
+      "propagate": false
+    },
+    "boto3": {
+      "level": "WARNING",
+      "handlers": ["lambda"],
+      "propagate": false
+    },
+    "botocore": {
+      "level": "WARNING",
+      "handlers": ["lambda"],
+      "propagate": false
+    },
+    "qdrant_client": {
+      "level": "INFO",
+      "handlers": ["lambda"],
+      "propagate": false
+    },
+    "langchain": {
+      "level": "WARNING",
+      "handlers": ["lambda"],
+      "propagate": false
+    }
+  },
+  "root": {
+    "level": "INFO",
+    "handlers": ["lambda"]
+  }
+}
