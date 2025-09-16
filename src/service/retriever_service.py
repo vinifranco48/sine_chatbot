@@ -24,21 +24,19 @@ class QdrantRetriever:
                 self, embeddings: QueryEmbeddings, limit: int = 5
                 ) -> List[Document]:
             try:
+                # Usar busca híbrida correta com query principal
                 search_result = self.client.query_points(
                     collection_name=self.collection_name,
+                    query=embeddings.dense,  # Query principal usando vetor denso
+                    using="dense",
+                    limit=limit,
                     prefetch=[
-                        {
-                            "query": embeddings.dense,
-                            "using": "dense",
-                            "limit": self.prefetch_limit
-                        },
                         {
                             "query": embeddings.sparse_bm25.model_dump(),
                             "using": "sparse",
                             "limit": self.prefetch_limit
                         }
                     ]
-
                 )
 
                 return [

@@ -40,8 +40,10 @@ class Settings(BaseSettings):
     prefetch_limit: int = Field(25, validation_alias='PREFETCH_LIMIT')
 
     # --- Embeddings Configuration ---
-    dense_model_name: str = "amazon.titan-embed-text-v2:0"
+    dense_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"  # FastEmbed compatible
     bm25_model_name: str = "Qdrant/bm25"
+    # AWS Bedrock model (usado na ingestão)
+    bedrock_embedding_model: str = "amazon.titan-embed-text-v2:0"
 
     # --- Data Processing Configuration ---
     data_path: str = Field("./data/", validation_alias='DATA_PATH')

@@ -10,6 +10,9 @@ from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import PointStruct, SparseVector, VectorParams, Distance, SparseVectorParams
 from fastembed.late_interaction import LateInteractionTextEmbedding
 from fastembed import TextEmbedding
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.config.settings import Settings
 import boto3
 from fastembed.sparse.bm25 import Bm25
@@ -117,14 +120,24 @@ def create_product_text_from_json(product: Dict) -> str:
     for key, value in product.items():
         if key == 's3_key':  # Skip S3 key
             continue
-            
+
         # Use mapping if available, otherwise use original key
         label = field_mapping.get(key.lower(), key.title())
-        
+
         if value and str(value).strip():
-            text_parts.append(f"{label}: {value}")
-    
-    return "\n".join(text_parts)
+            # Limit individual field values to prevent extremely long text
+            value_str = str(value).strip()
+            if len(value_str) > 2000:  # Limit individual field to 2000 chars
+                value_str = value_str[:2000] + "..."
+            text_parts.append(f"{label}: {value_str}")
+
+    final_text = "\n".join(text_parts)
+
+    # Final safety check - limit total text length
+    if len(final_text) > 5000:
+        final_text = final_text[:5000] + "..."
+
+    return final_text
 
 def create_product_metadata_from_json(product: Dict, index: int) -> Dict:
     """Create metadata for product from JSON."""
@@ -234,6 +247,13 @@ def initialize_embedding_models():
 def create_embeddings(chunk_text, bedrock_client, bm25_model):
     """Create embeddings for text using specified models."""
     try:
+        # Truncate text to prevent token limit issues (approximately 6000 characters = ~1500 tokens)
+        # Keeping some margin below the 8192 token limit
+        max_chars = 6000
+        if len(chunk_text) > max_chars:
+            chunk_text = chunk_text[:max_chars] + "..."
+            print(f"Text truncated to {max_chars} characters")
+
         # Request body for Titan Text Embeddings V2
         body = json.dumps({
             "inputText": chunk_text,
@@ -337,10 +357,6 @@ def process_and_upload_chunks(collection_name: str, chunks: list[dict], batch_si
             vectors_config={
                 "dense": models.VectorParams(
                     size=1024,
-                    distance=models.Distance.COSINE
-                ),
-                "sparse": models.VectorParams(
-                    size=50000,  
                     distance=models.Distance.COSINE
                 )
             },
@@ -451,4 +467,4 @@ if __name__ == "__main__":
     # main(max_files_first_batch=1000, max_files_total=None)
 
     # Subsequent executions: process all files, but skip already processed ones
-    main(max_files_first_batch=1000, max_files_total=None)
+    main(max_files_first_batch=10, max_files_total=None)
