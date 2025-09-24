@@ -24,15 +24,20 @@ class QdrantRetriever:
                 self, embeddings: QueryEmbeddings, limit: int = 5
                 ) -> List[Document]:
             try:
-                # Usar busca híbrida correta com query principal
+                # Preparar sparse vector no formato correto para Qdrant
+                sparse_vector = {
+                    "indices": embeddings.sparse_bm25.indices,
+                    "values": embeddings.sparse_bm25.values
+                }
+
                 search_result = self.client.query_points(
                     collection_name=self.collection_name,
-                    query=embeddings.dense,  # Query principal usando vetor denso
+                    query=embeddings.dense,
                     using="dense",
                     limit=limit,
                     prefetch=[
                         {
-                            "query": embeddings.sparse_bm25.model_dump(),
+                            "query": sparse_vector,
                             "using": "sparse",
                             "limit": self.prefetch_limit
                         }
@@ -47,7 +52,6 @@ class QdrantRetriever:
                     for point in search_result.points
                 ]
             except UnexpectedResponse as e:
-                # Handle Qdrant-specific errors
                 logger.error(
                     "Qdrant search failed",
                     extra={"error": str(e), "collection": self.collection_name},
@@ -56,7 +60,6 @@ class QdrantRetriever:
                     status_code=503, detail="Search service temporarily unavailable"
                 )
             except Exception as e:
-                # Handle any other errors
                 logger.error(
                     "Unexpected error during search",
                     extra={"error": str(e), "collection": self.collection_name},

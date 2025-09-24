@@ -1,12 +1,9 @@
 import json
 import logging
 from typing import Optional
-
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
-
 from src.config.settings import Settings
-
 logger = logging.getLogger(__name__)
 
 class LLMService:
@@ -38,23 +35,9 @@ class LLMService:
         max_gen_len: Optional[int] = None,
         top_p: Optional[float] = None
     ) -> Optional[str]:
-        """Generate a response using the Bedrock LLM model.
-        
-        Args:
-            prompt: The input prompt for the model
-            temperature: Controls randomness (0.0-1.0). Defaults to 0.7
-            max_gen_len: Maximum tokens to generate. Defaults to 2048
-            top_p: Nucleus sampling parameter. Defaults to 0.9
-            
-        Returns:
-            Generated text response or None if error occurs
-            
-        Raises:
-            ValueError: If prompt is empty or invalid
-        """
+        """ Generate a response using the Bedrock LLM model. """
         self._validate_prompt(prompt)
         
-        # Use provided values or defaults
         temperature = temperature if temperature is not None else 0.7
         max_gen_len = max_gen_len if max_gen_len is not None else 2048
         top_p = top_p if top_p is not None else 0.9
@@ -99,14 +82,7 @@ class LLMService:
             return None
     
     def _validate_prompt(self, prompt: str) -> None:
-        """Validate the input prompt.
-        
-        Args:
-            prompt: The prompt to validate
-            
-        Raises:
-            ValueError: If prompt is invalid
-        """
+        """ Validate the input prompt. """
         if not prompt:
             raise ValueError("Prompt cannot be None")
         if not isinstance(prompt, str):
@@ -115,15 +91,7 @@ class LLMService:
             raise ValueError("Prompt cannot be empty or only whitespace")
     
     def _extract_response_text(self, response_body: dict) -> Optional[str]:
-        """Extract text from various Bedrock response formats.
-        
-        Args:
-            response_body: The parsed JSON response from Bedrock
-            
-        Returns:
-            Extracted text or None if no text found
-        """
-        # Try different response formats based on model type
+        """ Extract text from various Bedrock response formats. """
         if 'generation' in response_body:
             return response_body['generation']
         elif 'completions' in response_body and response_body['completions']:

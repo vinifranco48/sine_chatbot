@@ -14,15 +14,7 @@ class SpeechToTextService:
         self.client = Groq(api_key=self.api_key)
 
     def transcribe_audio(self, file_path):
-        """
-        Transcribe audio file using Groq's Whisper model.
-        
-        Args:
-            file_path: Path to the audio file to transcribe
-            
-        Returns:
-            Transcribed text as string
-        """
+        """ Transcribe audio file using Groq's Whisper model. """
         try:
             with open(file_path, "rb") as file:
                 transcription = self.client.audio.transcriptions.create(

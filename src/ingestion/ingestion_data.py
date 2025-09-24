@@ -22,57 +22,50 @@ settings = Settings()
 EMBED_MODEL = settings.dense_model_name
 MAX_TOKENS = 750
 
-# S3 Configuration
 S3_BUCKET_NAME = "raw-data-sinergia"
-S3_PREFIX = "refined/products/"  # Path where product JSONs are stored
+S3_PREFIX = "refined/products/"  
 
 def load_data_from_s3(bucket_name: str, prefix: str, max_files: int = None) -> List[Dict]:
-    """Load JSON data from S3."""
+    """ Load Json data from s3 """
     try:
-        s3_client = boto3.client('s3', region_name='us-east-2')
-        
+        s3_client = boto3.client('s3', region_name = settings.aws_region)
         # List objects in bucket
-        response = s3_client.list_objects_v2(
+        response = s3_client.list_object_v2(
             Bucket=bucket_name,
             Prefix=prefix
         )
-        
+
         if 'Contents' not in response:
             print(f"No files found in bucket {bucket_name} with prefix {prefix}")
             return []
         
         objects = response['Contents']
-        
-        # Filter only JSON files
-        json_files = [obj for obj in objects if obj['Key'].endswith('.json')]
-        
+
+        # Filter only json files
+        json_files = [obj for obj in objects if obj['key'].endswith('.json')]
+
         if max_files:
             json_files = json_files[:max_files]
-        
-        print(f"Found {len(json_files)} JSON files in S3")
-        
-        products_data = []
-        
-        for obj in tqdm(json_files, desc="Loading files from S3"):
+        print(f"Found {len(json_files)} Json files in s3")
+        product_data = []
+
+        for obj in tqdm(json_files, desc="Loading files from s3"):
             try:
-                # Download JSON file
-                response = s3_client.get_object(Bucket=bucket_name, Key=obj['Key'])
+                # Download Json file
+                response = s3_client.get_object(Bucket=bucket_name, key=obj['key'])
                 content = response['Body'].read().decode('utf-8')
                 product_data = json.loads(content)
-                
-                # Add S3 key as unique identifier
-                product_data['s3_key'] = obj['Key']
-                products_data.append(product_data)
-                
+
+                # Add s3 key as unique indentifier
+                product_data['s3_key'] = obj['key']
+                product_data.append(product_data)
             except Exception as e:
-                print(f"Error processing file {obj['Key']}: {e}")
+                print(f"Error processing file {obj["key"]}: {e}")
                 continue
-        
-        print(f"Data loaded successfully: {len(products_data)} products")
-        return products_data
-        
+        print(f" Data loaded successfully: {len(product_data)} products")
+        return product_data
     except Exception as e:
-        print(f"Error loading data from S3: {e}")
+        print(f"Error loading data from s3: {e}")
         return []
 
 def create_product_chunks_from_json(products_data: List[Dict]) -> List[Dict]:
@@ -85,7 +78,7 @@ def create_product_chunks_from_json(products_data: List[Dict]) -> List[Dict]:
         chunks.append({
             "text": product_text, 
             "metadata": metadata,
-            "s3_key": product.get('s3_key')  # Maintain S3 reference
+            "s3_key": product.get('s3_key')
         })
     
     return chunks
@@ -93,8 +86,6 @@ def create_product_chunks_from_json(products_data: List[Dict]) -> List[Dict]:
 def create_product_text_from_json(product: Dict) -> str:
     """Create text representation of product from JSON."""
     text_parts = []
-    
-    # Map common fields that may be in JSON
     field_mapping = {
         'nome': 'Produto',
         'produto': 'Produto', 
@@ -118,22 +109,19 @@ def create_product_text_from_json(product: Dict) -> str:
     
     # Process all product fields
     for key, value in product.items():
-        if key == 's3_key':  # Skip S3 key
+        if key == 's3_key': 
             continue
 
-        # Use mapping if available, otherwise use original key
         label = field_mapping.get(key.lower(), key.title())
 
         if value and str(value).strip():
-            # Limit individual field values to prevent extremely long text
             value_str = str(value).strip()
-            if len(value_str) > 2000:  # Limit individual field to 2000 chars
+            if len(value_str) > 2000: 
                 value_str = value_str[:2000] + "..."
             text_parts.append(f"{label}: {value_str}")
 
     final_text = "\n".join(text_parts)
 
-    # Final safety check - limit total text length
     if len(final_text) > 5000:
         final_text = final_text[:5000] + "..."
 
@@ -182,7 +170,6 @@ def get_existing_s3_keys(client: QdrantClient, collection_name: str) -> Set[str]
     existing_keys = set()
     
     try:
-        # Scroll through all points to get S3 keys
         offset = None
         limit = 100
         
@@ -210,7 +197,6 @@ def get_existing_s3_keys(client: QdrantClient, collection_name: str) -> Set[str]
         
     except Exception as e:
         print(f"Error getting existing keys (collection may not exist): {e}")
-        # If collection doesn't exist, return empty set
         
     return existing_keys
 
@@ -232,7 +218,7 @@ def initialize_embedding_models():
     try:
         bedrock_client = boto3.client(
             service_name="bedrock-runtime", 
-            region_name='us-east-2',
+            region_name=settings.aws_region,
         )
         print("AWS Bedrock client initialized successfully.")
     except Exception as e:
@@ -247,14 +233,11 @@ def initialize_embedding_models():
 def create_embeddings(chunk_text, bedrock_client, bm25_model):
     """Create embeddings for text using specified models."""
     try:
-        # Truncate text to prevent token limit issues (approximately 6000 characters = ~1500 tokens)
-        # Keeping some margin below the 8192 token limit
         max_chars = 6000
         if len(chunk_text) > max_chars:
             chunk_text = chunk_text[:max_chars] + "..."
             print(f"Text truncated to {max_chars} characters")
 
-        # Request body for Titan Text Embeddings V2
         body = json.dumps({
             "inputText": chunk_text,
             "dimensions": 1024,
@@ -300,7 +283,6 @@ def prepare_point(chunk, embedding_models):
     
     embeddings = create_embeddings(text, bedrock_client, bm25_model)
     
-    # Validation to skip chunk if embedding creation fails
     if not embeddings or not embeddings.get("dense"):
         print(f"Skipping chunk due to embedding error: {chunk['metadata'].get('product_name')}")
         return None
@@ -311,7 +293,6 @@ def prepare_point(chunk, embedding_models):
         values=embeddings["sparse"].values.tolist()
     )
     
-    # Unpack metadata
     payload = {"text": text, **chunk.get("metadata", {})}
     
     return PointStruct(
@@ -367,11 +348,8 @@ def process_and_upload_chunks(collection_name: str, chunks: list[dict], batch_si
         print("Collection created successfully.")
     else:
         print(f"Collection '{collection_name}' already exists. Checking for duplicates...")
-        
-        # Get already processed S3 keys
         existing_keys = get_existing_s3_keys(client, collection_name)
         
-        # Filter only new chunks
         chunks = filter_new_chunks(chunks, existing_keys)
         
         if not chunks:
@@ -406,7 +384,6 @@ def main(max_files_first_batch: int = 1000, max_files_total: int = None):
     
     collection_name = os.getenv("QDRANT_COLLECTION_NAME", "produtos_agricolas")
     
-    # Check if data already exists in collection
     try:
         client = QdrantClient(
             url=settings.qdrant_url,
@@ -440,13 +417,10 @@ def main(max_files_first_batch: int = 1000, max_files_total: int = None):
         return
     
     print(f"   - {len(products_data)} products loaded")
-    
-    # Create product chunks
     print("2. Creating product chunks...")
     chunks = create_product_chunks_from_json(products_data)
     print(f"   - {len(chunks)} chunks created")
     
-    # Show example of processed chunk
     print("\n=== PROCESSED CHUNK EXAMPLE ===")
     if chunks:
         example_chunk = chunks[0]
@@ -463,8 +437,4 @@ def main(max_files_first_batch: int = 1000, max_files_total: int = None):
 
 # Main execution
 if __name__ == "__main__":
-    # First execution: process only 1000 files
-    # main(max_files_first_batch=1000, max_files_total=None)
-
-    # Subsequent executions: process all files, but skip already processed ones
     main(max_files_first_batch=10, max_files_total=None)

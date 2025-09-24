@@ -11,15 +11,12 @@ class QueryEmbedder:
         if "TOKENIZERS_PARALLELISM" not in os.environ:
             os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-        # Usar Amazon Bedrock para embeddings densos (Titan)
         self.bedrock_client = boto3.client('bedrock-runtime', region_name=aws_region)
         self.dense_model_name = dense_model_name
-        
-        # Usar FastEmbed para embeddings esparsos (BM25)
         self.sparse_embedding_model = Bm25(sparse_model_name)
 
     def _get_bedrock_embedding(self, text: str) -> list:
-        """Gera embedding denso usando Amazon Titan via Bedrock"""
+        """Generates dense embedding using Amazon Titan via Bedrock"""
         try:
             body = json.dumps({
                 "inputText": text
@@ -36,17 +33,14 @@ class QueryEmbedder:
             return response_body['embedding']
             
         except Exception as e:
-            raise RuntimeError(f"Erro ao gerar embedding denso com Amazon Titan: {e}")
+            raise RuntimeError(f"Error generating dense embedding with Amazon Titan: {e}")
 
     def embed_query(self, query: str) -> QueryEmbeddings:
         if not query or not query.strip():
-            raise ValueError("Query não pode ser vazia")
+            raise ValueError("Query cannot be empty")
             
         try:
-            # Embedding denso via Amazon Titan (Bedrock)
             dense_vector = self._get_bedrock_embedding(query)
-            
-            # Embedding esparso (BM25) via FastEmbed
             sparse_vector = next(self.sparse_embedding_model.query_embed([query]))
 
             return QueryEmbeddings(
@@ -54,4 +48,4 @@ class QueryEmbedder:
                 sparse_bm25=SparseVector(**sparse_vector.as_object())
             )
         except Exception as e:
-            raise RuntimeError(f"Erro ao gerar embeddings: {e}")
+            raise RuntimeError(f"Error generating embeddings: {e}")

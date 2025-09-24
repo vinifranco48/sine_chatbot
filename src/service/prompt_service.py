@@ -4,15 +4,11 @@ def format_rag_prompt(query: str, context: str) -> str:
     O objetivo é gerar respostas naturais, técnicas e práticas sobre produtos agrícolas,
     como um consultor experiente conversando de forma fluida.
     """
-    
-    # Detecta se é uma saudação/cumprimento simples
+
     saudacoes = ['oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'e aí', 'eai', 'tudo bem']
     is_greeting = any(greeting in query.lower().strip() for greeting in saudacoes) and len(query.strip().split()) <= 3
 
-    # Se nenhum contexto for recuperado, informa isso claramente.
     context_block = context if context and context.strip() else "Nenhuma informação específica sobre este produto foi encontrada nos documentos de referência."
-
-    # Para saudações simples, retorna prompt específico
     if is_greeting:
         prompt = f"""Você é um consultor agrícola experiente da Synap, especializado no portfólio Syngenta. 
 
@@ -24,8 +20,6 @@ Saudação do usuário: {query}
 
 Sua resposta:"""
         return prompt
-
-    # Para perguntas técnicas, usa o prompt humanizado
     prompt = f"""Você é um consultor agrícola experiente, apaixonado por ajudar produtores rurais. Tem anos de experiência no campo e conhece profundamente o portfólio de produtos Syngenta. Sua forma de falar é natural, acessível e confiável - como um amigo que entende do assunto.
 
 Sua missão é ajudar o usuário com a pergunta dele, oferecendo orientação prática e confiável. Converse de forma fluida e humana, como se estivessem tomando um café e discutindo soluções para o campo.
@@ -86,10 +80,5 @@ def should_include_disclaimer(response_text: str) -> bool:
     ]
     
     response_lower = response_text.lower()
-    
-    # Conta quantas palavras críticas aparecem na response
-    critical_count = sum(1 for keyword in critical_keywords if keyword in response_lower)
-    
-    # Inclui disclaimer apenas se houver pelo menos 2 palavras críticas
-    # Isso evita falsos positivos em conversas gerais
+    critical_count = sum(1 for keyword in critical_keywords if keyword in response_lower) 
     return critical_count >= 2

@@ -12,7 +12,7 @@ import time
 
 
 class Agent(TypedDict):
-    """Define o estado que flui através do grafo para o AgroAssistente."""
+    """Defines the state that flows through the graph for AgroAssistente."""
     query: str
     filters: Optional[Dict[str, Any]]
     query_embedding: Optional[QueryEmbeddings] 
@@ -24,67 +24,64 @@ class Agent(TypedDict):
 
 def embed_query_node(state: Agent, query_embedder: QueryEmbedder) -> Dict[str, Any]:
     """
-    Nó para gerar os embeddings híbridos (dense, sparse, late) da query do usuário.
+    Node to generate hybrid embeddings (dense, sparse, late) for the user's query.
     """
-    print('--- Nó: Embed Query (Híbrido) ---')
+    print('--- Node: Embed Query (Hybrid) ---')
     query = state.get("query")
     if not query:
-        error_msg = "Query não encontrada no estado."
-        print(f"Erro: {error_msg}")
+        error_msg = "Query not found in state."
+        print(f"Error: {error_msg}")
         return {"error": json.dumps({"node": "embed_query", "message": error_msg})}
 
     try:
-        print(f"Gerando embeddings híbridos para a query: '{query[:100]}...'")
+        print(f"Generating hybrid embeddings for query: '{query[:100]}...'")
         start_time = time.time()
-        # MUDANÇA: Usa o serviço QueryEmbedder para obter todos os embeddings de uma vez
         embeddings = query_embedder.embed_query(query)
         end_time = time.time()
-        print(f"Embeddings gerados em {end_time - start_time:.4f}s.")
+        print(f"Embeddings generated in {end_time - start_time:.4f}s.")
 
         if not embeddings:
-            raise ValueError("Falha ao gerar embeddings (resultado vazio).")
+            raise ValueError("Failed to generate embeddings (empty result).")
 
         return {"query_embedding": embeddings, "error": None}
 
     except Exception as e:
         error_details = traceback.format_exc()
-        print(f"Erro excepcional no embed_query_node: {e}\n{error_details}")
+        print(f"Exception in embed_query_node: {e}\n{error_details}")
         return {"error": json.dumps({"node": "embed_query", "message": str(e), "details": error_details})}
 
 
 def retrieve_documents_node(state: Agent, qdrant_retriever: QdrantRetriever) -> Dict[str, Any]:
     """
-    Nó para recuperar documentos usando busca híbrida (prefetch) e reranking (late-interaction).
+    Node to retrieve documents using hybrid search (prefetch) and reranking (late-interaction).
     """
-    print('--- Nó: Retrieve Documents (Híbrido) ---')
+    print('--- Node: Retrieve Documents (Hybrid) ---')
     if state.get("error"):
-        print(f"Erro anterior detectado, pulando recuperação: {state.get('error')}")
+        print(f"Previous error detected, skipping retrieval: {state.get('error')}")
         return {"retrieved_docs": [], "context": ""}
 
     query_embedding = state.get("query_embedding")
     if not query_embedding:
-        error_msg = "Objeto de embeddings não encontrado no estado."
-        print(f"Erro: {error_msg}")
+        error_msg = "Embeddings object not found in state."
+        print(f"Error: {error_msg}")
         return {"retrieved_docs": [], "context": "", "error": json.dumps({"node": "retrieve_documents", "message": error_msg})}
 
     try:
-        print("Buscando documentos com busca híbrida e reranking...")
-        # MUDANÇA: Usa o método search_documents do QdrantRetriever, que orquestra a busca complexa
+        print("Searching documents with hybrid search and reranking...")
         retrieved_documents = qdrant_retriever.search_documents(
             embeddings=query_embedding,
             limit=settings.retrieval_limit
         )
-        print(f"Recuperados {len(retrieved_documents)} documentos após reranking.")
+        print(f"Retrieved {len(retrieved_documents)} documents after reranking.")
 
-        # MUDANÇA: Extrai o contexto dos objetos Document
         context_texts = [doc.page_content for doc in retrieved_documents if doc.page_content]
 
         if not context_texts:
-            print("Aviso: Nenhum texto encontrado nos documentos recuperados.")
+            print("Warning: No text found in retrieved documents.")
             context = ""
         else:
             context = "\n\n---\n\n".join(context_texts)
-            print(f"Contexto montado (primeiros 200 chars): {context[:200]}...")
+            print(f"Context assembled (first 200 chars): {context[:200]}...")
 
         return {
             "retrieved_docs": retrieved_documents,
@@ -94,40 +91,39 @@ def retrieve_documents_node(state: Agent, qdrant_retriever: QdrantRetriever) -> 
 
     except Exception as e:
         error_details = traceback.format_exc()
-        print(f"Erro excepcional ao recuperar documentos: {e}\n{error_details}")
+        print(f"Exception while retrieving documents: {e}\n{error_details}")
         return {"retrieved_docs": [], "context": "", "error": json.dumps({"node": "retrieve_documents", "message": str(e), "details": error_details})}
 
 
 def generate_response_node(state: Agent, llm_service: LLMService) -> Dict[str, Any]:
-    """Nó para gerar a resposta final usando o LLM com o prompt do AgroAssistente."""
-    print('--- Nó: Generate Response ---')
+    """Node to generate the final response using the LLM with the AgroAssistente prompt."""
+    print('--- Node: Generate Response ---')
     if state.get('error'):
-        print(f"Erro anterior detectado, pulando geração de resposta: {state.get('error')}")
+        print(f"Previous error detected, skipping response generation: {state.get('error')}")
         error_info = json.loads(state.get('error'))
-        return {"response": f"Desculpe, ocorreu um erro no passo '{error_info.get('node', 'desconhecido')}': {error_info.get('message', 'Erro interno.')}"}
+        return {"response": f"Sorry, an error occurred in step '{error_info.get('node', 'unknown')}': {error_info.get('message', 'Internal error.')}"}
 
     query = state.get('query')
     context = state.get('context', "")
     
     try:
         prompt = format_rag_prompt(query=query, context=context)
-        print(f"DEBUG: Prompt para LLM (início): {prompt[:200]}...")
+        print(f"DEBUG: Prompt for LLM (start): {prompt[:200]}...")
 
         response_text = llm_service.generate_response(prompt)
         if not response_text:
-            raise ValueError("Falha ao gerar resposta do LLM (resposta vazia).")
+            raise ValueError("Failed to generate LLM response (empty response).")
 
-        # MUDANÇA: Adiciona o disclaimer condicionalmente
         final_response = response_text
         if should_include_disclaimer(response_text):
             final_response += get_disclaimer()
 
-        print(f"Resposta final gerada (início): {final_response[:200]}...")
+        print(f"Final response generated (start): {final_response[:200]}...")
         return {"response": final_response, "error": None}
 
     except Exception as e:
         error_details = traceback.format_exc()
-        print(f"Erro excepcional ao gerar resposta com LLM: {e}\n{error_details}")
+        print(f"Exception while generating response with LLM: {e}\n{error_details}")
         return {"response": None, "error": json.dumps({"node": "generate_response", "message": str(e), "details": error_details})}
 
 
@@ -136,22 +132,19 @@ def create_compiled_graph(
     qdrant_retriever: QdrantRetriever,
     llm_service: LLMService
 ):
-    """Constrói e compila o grafo LangGraph para o fluxo do AgroAssistente."""
-    print("Construindo e compilando o grafo LangGraph do AgroAssistente...")
+    """Builds and compiles the LangGraph graph for the AgroAssistente flow."""
+    print("Building and compiling the LangGraph graph for AgroAssistente...")
 
     workflow = StateGraph(Agent)
-
-    # Adiciona nós, passando os novos serviços como argumentos
     workflow.add_node("embed_query", lambda state: embed_query_node(state, query_embedder))
     workflow.add_node("retrieve_documents", lambda state: retrieve_documents_node(state, qdrant_retriever))
     workflow.add_node("generate_response", lambda state: generate_response_node(state, llm_service))
 
-    # O fluxo do grafo permanece o mesmo
     workflow.set_entry_point("embed_query")
     workflow.add_edge("embed_query", "retrieve_documents")
     workflow.add_edge("retrieve_documents", "generate_response")
     workflow.add_edge("generate_response", END)
     
     compiled_graph = workflow.compile()
-    print("Grafo do AgroAssistente compilado com sucesso.")
+    print("AgroAssistente graph compiled successfully.")
     return compiled_graph
